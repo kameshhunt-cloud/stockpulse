@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="StockPulse — Location-aware stock suggestions based on real-time market data and intelligent scoring.">
+  <title>StockPulse — Smart Stock Suggestions</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ═══ API Key Modal ═══ -->
+  <div id="api-key-modal" class="modal-overlay">
+    <div class="modal-card">
+      <h2>🔮 Welcome to StockPulse</h2>
+      <p>Enter your free Finnhub API key to get started with real-time stock data and smart suggestions.</p>
+      <form id="api-key-form">
+        <input type="text" id="api-key-input" placeholder="Paste your Finnhub API key..." autocomplete="off">
+        <div id="api-key-error" class="modal-error"></div>
+        <button type="submit" id="api-key-submit" class="btn-primary">Connect</button>
+      </form>
+      <span class="modal-link">Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener">finnhub.io</a> — takes 30 seconds</span>
+    </div>
+  </div>
+
+  <!-- ═══ Loading Screen ═══ -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loader">
+      <div class="loader-ring"></div>
+      <p>Analyzing market data...</p>
+    </div>
+  </div>
+
+  <!-- ═══ Header ═══ -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">🔮</span>
+        <span>StockPulse</span>
+      </div>
+
+      <div class="location-badge">
+        <span class="flag" id="location-flag">🌍</span>
+        <span id="location-name">Detecting...</span>
+      </div>
+
+      <div class="market-status">
+        <span class="status-dot" id="market-status-dot"></span>
+        <div class="market-status-text">
+          <span id="market-status-label">—</span>
+          <div class="next-event" id="market-status-next"></div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <select id="market-selector" title="Switch market"></select>
+        <button class="icon-btn" id="refresh-btn" title="Refresh data">🔄</button>
+        <button class="icon-btn" id="settings-btn" title="API key settings">⚙️</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══ Error Banner ═══ -->
+  <div id="error-banner" class="error-banner" style="max-width:1200px;margin:1rem auto 0"></div>
+  <div id="data-note-banner" class="data-note-banner" style="display:none;max-width:1200px;margin:.5rem auto 0;padding:.6rem 1rem;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:8px;color:#94a3b8;font-size:.8rem"></div>
+
+  <!-- ═══ Main Content ═══ -->
+  <main id="main-content" class="main-content">
+
+    <!-- Market Overview -->
+    <section class="overview-section">
+      <h2 class="section-title"><span class="icon">📊</span> Market Overview</h2>
+      <div class="overview-grid">
+        <div class="glass-card">
+          <div class="stat-row">
+            <div class="stat-block">
+              <div class="stat-label">Avg. Change</div>
+              <div class="stat-value" id="overview-avg-change">—</div>
+            </div>
+            <div class="stat-block">
+              <div class="stat-label">Gainers</div>
+              <div class="stat-value positive" id="overview-gainers">—</div>
+            </div>
+            <div class="stat-block">
+              <div class="stat-label">Losers</div>
+              <div class="stat-value negative" id="overview-losers">—</div>
+            </div>
+            <div class="stat-block">
+              <div class="stat-label">Avg. Score</div>
+              <div class="stat-value" id="overview-avg-score">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="glass-card sentiment-card">
+          <div class="sentiment-top">
+            <span class="emoji" id="sentiment-icon">📊</span>
+            <span class="sentiment-label" id="sentiment-label">—</span>
+          </div>
+          <div class="sentiment-bar"><div class="bar-fill" id="sentiment-bar-fill"></div></div>
+          <span class="sentiment-ratio" id="sentiment-ratio"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sector Heatmap -->
+    <section class="sectors-section">
+      <h2 class="section-title"><span class="icon">🏷️</span> Sector Performance</h2>
+      <div id="sector-grid"></div>
+    </section>
+
+    <!-- Top Picks -->
+    <section class="picks-section">
+      <h2 class="section-title"><span class="icon">🌟</span> Today's Top Picks</h2>
+      <div id="picks-grid"></div>
+    </section>
+
+    <!-- Full Rankings -->
+    <section class="rankings-section">
+      <div class="rankings-header">
+        <h2 class="section-title"><span class="icon">📋</span> Full Rankings</h2>
+        <select id="sector-filter">
+          <option value="">All Sectors</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-sort="rank" class="sortable">#</th>
+              <th data-sort="symbol" class="sortable">Stock</th>
+              <th data-sort="sector" class="sortable">Sector</th>
+              <th data-sort="price" class="sortable">Price</th>
+              <th data-sort="change" class="sortable">Change</th>
+              <th data-sort="score" class="sortable asc">Score</th>
+              <th>Signal</th>
+              <th>★</th>
+            </tr>
+          </thead>
+          <tbody id="rankings-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Watchlist -->
+    <section class="watchlist-section">
+      <h2 class="section-title"><span class="icon">⭐</span> My Watchlist</h2>
+      <div id="watchlist-items"></div>
+      <p id="watchlist-empty" class="watchlist-empty">Click ☆ on any stock to add it to your watchlist.</p>
+    </section>
+
+  </main>
+
+  <!-- ═══ Footer ═══ -->
+  <footer class="app-footer">
+    <span>⚠️ For educational purposes only. Not financial advice.</span>
+    <span>Data by <a href="https://finnhub.io" target="_blank" rel="noopener">Finnhub</a></span>
+    <span id="last-updated"></span>
+  </footer>
+
+  <!-- ═══ Scripts (order matters: config → api → location → scoring → ui → app) ═══ -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/location.js"></script>
+  <script src="js/scoring.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
