@@ -65,7 +65,7 @@ const UI = (() => {
   }
   function hideApiKeyModal() { $('#api-key-modal').classList.remove('visible'); }
 
-  function renderHeader(market, countryCode, marketStatus) {
+  function renderHeader(market, activeMarketKey, marketStatus) {
     $('#location-flag').textContent = market.flag;
     $('#location-name').textContent = `${market.name} · ${market.exchangeLabel}`;
     const dot = $('#market-status-dot');
@@ -81,7 +81,7 @@ const UI = (() => {
       const opt = document.createElement('option');
       opt.value = m.key;
       opt.textContent = `${m.flag} ${m.name}`;
-      if (m.key === Location.getMarketKey(countryCode)) opt.selected = true;
+      if (m.key === activeMarketKey) opt.selected = true;
       sel.appendChild(opt);
     });
 

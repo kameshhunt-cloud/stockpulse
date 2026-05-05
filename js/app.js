@@ -29,7 +29,7 @@ const App = (() => {
 
       // 3. Render header
       const status = Location.getMarketStatus(_market);
-      UI.renderHeader(_market, _countryCode, status);
+      UI.renderHeader(_market, _marketKey, status);
 
       // 4. Fetch quotes & historical candles
       const symbols = _market.stocks.map((s) => s.symbol);
@@ -96,12 +96,40 @@ const App = (() => {
 
     try {
       const status = Location.getMarketStatus(_market);
-      UI.renderHeader(_market, _countryCode, status);
+      UI.renderHeader(_market, _marketKey, status);
 
       const symbols = _market.stocks.map((s) => s.symbol);
-      const quotesMap = await API.getQuotes(symbols);
+      const [quotesMap, candlesMap] = await Promise.all([
+        API.getQuotes(symbols),
+        API.getHistoricalCandlesBatched(symbols, 70) // ~50 trading days
+      ]);
 
-      _scoredStocks = Scoring.scoreAll(_market.stocks, quotesMap);
+      if (quotesMap.size === 0) {
+        UI.showError('No stock data received. The market may be closed or the API key may be invalid.');
+        UI.hideLoading();
+        return;
+      }
+
+      // Currency Conversion
+      if (_market.targetCurrency && _market.targetCurrency !== 'USD') {
+        const rates = await API.getExchangeRates();
+        if (rates && rates[_market.targetCurrency]) {
+          const rate = rates[_market.targetCurrency];
+          // Scale current quotes
+          quotesMap.forEach((q) => {
+            q.c *= rate; q.h *= rate; q.l *= rate; q.o *= rate; q.pc *= rate;
+          });
+          // Scale historical candles
+          candlesMap.forEach((c) => {
+            if (c.c) c.c = c.c.map(p => p * rate);
+            if (c.h) c.h = c.h.map(p => p * rate);
+            if (c.l) c.l = c.l.map(p => p * rate);
+            if (c.o) c.o = c.o.map(p => p * rate);
+          });
+        }
+      }
+
+      _scoredStocks = Scoring.scoreAll(_market.stocks, quotesMap, candlesMap);
       _renderAll();
     } catch (err) {
       console.error('Market switch error:', err);
